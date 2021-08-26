@@ -1,0 +1,159 @@
+\documentclass[12pt]{article}         % the type of document and font size (default 10pt)
+\usepackage[margin=1.0in]{geometry}   % sets all margins to 1in, can be changed
+\usepackage{moreverb}                 % for verbatimtabinput -- LaTeX environment
+\usepackage{url}                      % for \url{} command
+\usepackage{amssymb}                  % for many mathematical symbols
+\usepackage[pdftex]{lscape}           % for landscaped tables
+\usepackage{longtable}                % for tables that break over multiple pages
+\title{Relationships Between the Prices of Agricultural Commodities }  % to specify title
+\author{Jeff Shelton Okanga'a}          % to specify author(s)
+\begin{document}                      % document begins here
+\SweaveOpts{concordance=TRUE}
+
+% If .nw file contains graphs: To specify that EPS/PDF graph files are to be 
+% saved to 'graphics' sub-folder
+%     NOTE: 'graphics' sub-folder must exist prior to Sweave step
+%\SweaveOpts{prefix.string=graphics/plot}
+
+% If .nw file contains graphs: to modify (shrink/enlarge} size of graphics 
+% file inserted
+%         NOTE: can be specified/modified before any graph chunk
+\setkeys{Gin}{width=1.0\textwidth}
+
+\maketitle              % makes the title
+%\tableofcontents        % inserts TOC (section, sub-section, etc numbers and titles)
+%\listoftables           % inserts LOT (numbers and captions)
+%\listoffigures          % inserts LOF (numbers and captions)
+%                        %     NOTE: graph chunk must be wrapped with \begin{figure}, 
+%                        %  \end{figure}, and \caption{}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Where everything else goes
+
+\section{Introduction}
+In this document shows the relationship between the prices of two commodities,'Hard log Price' and 'Plywood Price', from the Agricultural commodities prices dataset extracted from Kaggle.
+We employed the use of a linear regression model to effectively compare the prices of the two commodities, alongside other analytics diagrams. The linear regression model equation used to represent the relationship is summarized as follows:
+$y=\beta_{1} + \beta_{2}x +\epsilon$.
+
+Below is a sample of the first six records of both prices and their respective summaries:
+      Hard Log Price:
+<<echo=FALSE>>=
+setwd("C:/Users/okang/Documents/APT 3010")
+agri <- read.csv("agraw.csv")
+head(agri$Hard.log.Price,6)
+summary(agri$Hard.log.Price)
+@
+      Plywood Price:
+<<echo=FALSE>>=
+head(agri$Plywood.Price,6)
+summary(agri$Plywood.Price)
+@
+
+\section{Graphical Analysis}
+In this section, we will build a simple regression model that will be used to predict the price of Plywood by establishing a statistically significant linear relationship with Hard Log prices.
+Therefore for this scenario, Plywood Price will be the dependent variable and Hard Log Price the independent variable.
+
+\begin{itemize}
+  \item Scatter plot:
+  Scatter plots helped us to visualize the linear relationship between the response,Plywood Price, and the predictor variable,Hard Log Price
+  \item Box plot
+  We utilize the boxplot to show the outliers in the data set, these are datapoints outside of the 1.5 * interquartile range (1.5*IQR). Where the interquartile range is calculated as the distance between the 25th percentile and 75th percentile values for each of the variables.
+  \item Density plot
+  We use the density plot to show how skewed our variables are compared to a normal curve. 
+\end{itemize}
+
+\begin{figure}
+<<echo = FALSE, fig = TRUE>>=
+require(ggplot2)
+require(tidyverse)
+ggplot(data = agri)+aes(Hard.log.Price,Plywood.Price)+geom_point()+geom_smooth()
+@
+\caption{The Scatter plot}
+\end{figure}
+
+\begin{figure}
+<<echo = FALSE, fig = TRUE>>=
+require(ggplot2)
+require(tidyverse)
+par(mfrow=c(1,2))
+boxplot(agri$Hard.log.Price, main="Hard Log Prices", sub=paste("Outlier rows: ",boxplot.stats(agri$Hard.log.Price)$out))
+
+boxplot(agri$Plywood.Price, main="Plywood Prices", sub=paste("Outlier rows: ",boxplot.stats(agri$Plywood.Price)$out))
+@
+\caption{BoxPlot showing Outliers in the Datasets}
+\end{figure}
+
+\begin{figure}
+<<echo = FALSE, fig = TRUE>>=
+library(e1071)
+par(mfrow=c(1,2)) # divide 1 row 2 columns
+plot(density(agri$Hard.log.Price),main = "Density Plot: Hard Log Prices",ylab = "Frequency",sub=paste("Skewness:",round(e1071::skewness(agri$Hard.log.Price),2)))
+polygon(density(agri$Hard.log.Price), col = "red")
+plot(density(agri$Plywood.Price),main = "Density Plot: Plywood Prices",ylab = "Frequency",sub=paste("Skewness:",round(e1071::skewness(agri$Plywood.Price),2)))
+polygon(density(agri$Plywood.Price), col = "blue")
+@
+\caption{Density plots: Checking how skewed the dataset is}
+\end{figure}
+
+\section{Building the Linear Regression Model}
+\subsection{Correlation Analysis}
+Correlation is a statistical measure that shows the degree of linear dependence between two variables. The closer it is to one the better the claim of a linear dependence. The correlation coefficient is:
+<<echo=FALSE>>=
+cor(agri$Hard.log.Price,agri$Plywood.Price)
+@
+
+We can therefore proceed to build a regression model for the two variables.
+\subsection{The linear Regression Equation}
+<<>>=
+linearMod<-lm(agri$Plywood.Price~agri$Hard.log.Price, data = cars)
+linearMod
+@
+The mathematical model is therefore:
+$PlywoodPrice = 1.113*HardLogprice + 228.809$
+
+\section{Linear Regression Diagnostics}
+We use this section of the document to determine how statistically significant our linear model is.
+<<>>=
+summary(linearMod)
+@
+The model is significant if the value of p is less than 0.05. When p Value is less than significance level (0.05), we can safely reject the null hypothesis that the co-efficient $\beta$ of the predictor is zero. 
+
+\section{Predicting Linear Models}
+To predict the values of the Plywood Price from that of the Hard Log Price we need to separate our data into training and test data. Training for our model to learn from and the test data to find out how accurate or efficiently it can learn from the provided dataset.
+We achieve this using the function sample().
+<<>>=
+set.seed(100)
+trainingRowIndex<-sample(1:nrow(agri),0.8*nrow(agri))
+trainingData<-agri[trainingRowIndex,]
+testData<-agri[-trainingRowIndex,]
+@
+\subsection{Index for the Training data}
+The index for the training data set.
+<<>>=
+trainingRowIndex
+@
+\subsection{Training Data and Testing Data}
+Data entries cannot displayed due to length of the dataset.
+
+\section{Fit the model on training data and predict dist on test data}
+Build the model
+<<>>=
+lmMod<-lm(Plywood.Price ~ Hard.log.Price, data = trainingData)
+summary(lmMod)
+PlywoodPricePred<-predict(lmMod,testData)
+@
+\subsection{Calculate prediction Accuracy and error rates}
+<<>>=
+actuals_preds<-data.frame(cbind(actuals=testData$dist, predicteds=PlywoodPricePred))
+actuals_preds
+@
+\subsection{Correlational Calculations}
+<<>>=
+correlation_accuracy<-cor(actuals_preds)
+correlation_accuracy
+@
+
+\section{Conclusion}
+Using a linear regression model we have effectively shown the relationship that exists between the prices of the two agricultural commodities plywood and hard wood. The regression is satisfied with the equation:  $PlywoodPrice = 1.113*HardLogprice + 228.809$
+
+
+\end{document}
